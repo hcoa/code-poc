@@ -13,7 +13,7 @@ server.use(cookieParser());
 
 if (process.env.logging !== 'false') { server.use(morgan('combined')); }
 
-server.use(serveStatic('example/static', { 'index': ['index.html', 'index.htm'] }));
+server.use(serveStatic('static', { 'index': ['index.html', 'index.htm'] }));
 server.use(bodyParser.urlencoded({ extended: false }))
 
 server.use(connectRoute(function (router) {
