@@ -1,0 +1,19 @@
+{
+  "name": "node-backend",
+  "version": "1.0.0",
+  "description": "backend for benchmark tests",
+  "main": "backend.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "dependencies": {
+    "connect": "*",
+    "cookie-parser": "*",
+    "morgan": "*",
+    "serve-static": "*",
+    "body-parser": "*",
+    "connect-route": "*"
+  },
+  "license": "ISC"
+}
