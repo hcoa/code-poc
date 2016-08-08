@@ -12,6 +12,7 @@ RUN npm install
 COPY cx/ /usr/src/app
 RUN mkdir -p /usr/src/compoxure
 COPY compoxure/ /usr/src/compoxure
+RUN npm install /usr/src/compoxure
 
 EXPOSE 5000
 CMD ["node","proxy.js"]
