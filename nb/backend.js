@@ -90,6 +90,6 @@ server.use(connectRoute(function (router) {
 
 }));
 
-server.listen(5001, 'localhost', function () {
+server.listen(5001, '0.0.0.0', function () {
   console.log('Example backend server on http://localhost:5001');
 });
