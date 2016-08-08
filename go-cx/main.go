@@ -2,8 +2,8 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
+	"sync"
 
 	"github.com/valyala/fasthttp"
 )
@@ -15,11 +15,29 @@ var (
 func main() {
 	flag.Parse()
 
-	if err := fasthttp.ListenAndServe(*addr, proxyHandler); err != nil {
+	cacheSize := 100 * 1024 * 1024
+	c := freecache.NewCache(cacheSize)
+	ch := &cxHandler{
+		cache:    c,
+		paramSet: make(map[string]string),
+	}
+
+	if err := fasthttp.ListenAndServe(*addr, ch.processHandle); err != nil {
 		log.Fatalf("Error in ListenAndServe: %s", err)
 	}
 }
 
+type cxHandler struct {
+	sync.Mutex
+	cache    *freecache.Cache
+	paramSet map[string]string
+}
+
+func (cx *cxHandler) processHandle(ctx *fasthttp.RequestCtx) {
+
+}
+
+/*
 func proxyHandler(ctx *fasthttp.RequestCtx) {
 	fmt.Fprintf(ctx, "Hello, world!\n\n")
 
@@ -48,3 +66,4 @@ func proxyHandler(ctx *fasthttp.RequestCtx) {
 	ctx.Response.Header.SetCookie(&c)
 
 }
+*/

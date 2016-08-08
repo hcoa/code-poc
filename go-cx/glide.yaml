@@ -1,3 +1,4 @@
 package: .
 import:
 - package: github.com/valyala/fasthttp
+- package: github.com/coocood/freecache
