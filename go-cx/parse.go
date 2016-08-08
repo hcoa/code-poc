@@ -37,4 +37,8 @@ var (
 		"user",
 		"device",
 	}
+	errTpl = `<div style="color: red; font-weight: bold; font-family: monospace;">Error: %s </div>`
 )
+
+type fragment struct {
+}
