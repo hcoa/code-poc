@@ -1,0 +1,105 @@
+package main
+
+import (
+	"fmt"
+	"net"
+	"testing"
+	"time"
+
+	"github.com/valyala/fasthttp"
+	"github.com/valyala/fasthttp/fasthttputil"
+)
+
+const (
+	comp1 = `<div>
+  <p>Widget 1</p>
+</div>`
+	comp2 = `<div>
+  <p>Widget Two</p>
+  <div cx-url='{{server:local}}/application/component1'></div>
+</div>`
+	root = `<body>
+  <div cx-url='{{server:local}}/application/component2'></div>
+</body>`
+)
+
+var respBodySet = map[string]string{
+	"comp1": comp1,
+	"comp2": comp2,
+	"root":  root,
+}
+
+fucn NewTestServer(t *testing.T) (*fasthttp.server, *fasthttp.HostClient, chan struct{}){
+	ln := fasthttputil.NewInmemoryListener()
+
+	s := &fasthttp.Server{
+		Handler: func(ctx *fasthttp.RequestCtx) {
+			switch string(ctx.Path()) {
+			case "/comp1":
+				ctx.WriteString(comp1)
+			case "/comp2":
+				ctx.WriteString(comp2)
+			case "/root":
+				ctx.WriteString(root)
+			default:
+				ctx.Success("text/plain", ctx.Path())
+			}
+		},
+	}
+
+	serverStopCh := make(chan struct{})
+	go func() {
+		if err := s.Serve(ln); err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		close(serverStopCh)
+	}()
+
+	c := &fasthttp.HostClient{
+		Addr: "foobar",
+		Dial: func(addr string) (net.Conn, error) {
+			return ln.Dial()
+		},
+		MaxConnDuration: 10 * time.Millisecond,
+	}
+	return s, c, serverStopCh
+}
+
+func NewTestCompoxur(t *testing.T) *compoxur {
+	cacheSize := 100 * 1024 * 1024
+	c := freecache.NewCache(cacheSize)
+
+	varSet := make(map[string]string)
+	varSet["server:local"] = "foobar"
+
+	ch := &compoxur{
+		cache:  c,
+		varSet: varSet,
+	}
+
+}
+
+func TestCalls(t *testing.T)  {
+	s, c, sCh := NewTestServer(t)
+
+	var alias, uri string
+	for _, alias = range [3]string{"comp1", "comp2", "root"} {
+		uri = fmt.Sprintf("http://foobar/%s", alias)
+		helperGetTimeout(c, uri, respBodySet[alias], t)
+	}
+}
+
+func helperGetTimeout(c *fasthttp.HostClient, uri, bodyStr string, t *testing.T) {
+	for i := 0; i < 9; i++ {
+		statusCode, body, err := c.GetTimeout(nil, uri, time.Second)
+		if err != nil {
+			t.Fatalf("unexpected error: %s", err)
+		}
+		if statusCode != fasthttp.StatusOK {
+			t.Fatalf("unexpected status code %d. Expecting %d", statusCode, fasthttp.StatusOK)
+		}
+		if string(body) != bodyStr {
+			t.Fatalf("unexpected body %q. Expecting %q", body, bodyStr)
+		}
+	}
+}

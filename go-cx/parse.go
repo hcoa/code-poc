@@ -1,5 +1,7 @@
 package main
 
+import "time"
+
 var (
 	tegAttrSet = [...]string{
 		"cx-url",
@@ -41,4 +43,9 @@ var (
 )
 
 type fragment struct {
+	alias   string // use as TPL key
+	ttl     time.Duration
+	timeout time.Duration
+	src     []byte
+	res     []byte
 }
