@@ -2,8 +2,8 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
-	"sync"
 
 	"github.com/coocood/freecache"
 	"github.com/valyala/fasthttp"
@@ -20,49 +20,20 @@ func main() {
 	cacheSize := 100 * 1024 * 1024
 	c := freecache.NewCache(cacheSize)
 
-	cnf = make(map[string]string)
-	cnf["server:local"] = slocal
+	varSet := make(map[string]string)
+	varSet["server:local"] = *slocal
 
-	ch := &cxHandler{
-		cache:    c,
-		paramSet: make(map[string]string),
+	ch := &compoxur{
+		cache:  c,
+		varSet: varSet,
 	}
 
-	if err := fasthttp.ListenAndServe(*addr, ch.processHandle); err != nil {
+	if err := fasthttp.ListenAndServe(*addr, ch.testHandle); err != nil {
 		log.Fatalf("Error in ListenAndServe: %s", err)
 	}
 }
 
-type backend struct {
-	regexp string
-	target string
-	host   string
-	//e.g. 1s = 1000, 1m = 60*1000 etc.
-	//The valid values are 1s, 1m, 1h, 1d.
-	//If you do not provide a suffix it assumes ms
-	ttl          string
-	timeout      string
-	quietFailure bool
-	dontPassUrl  bool
-	contentTypes []string
-	headers      []string
-	chackeKey    string
-	noCache      bool
-}
-
-type cxHandler struct {
-	sync.Mutex
-	cache    *freecache.Cache
-	paramSet map[string]string
-	backSet  []backend
-}
-
-func (cx *cxHandler) processHandle(ctx *fasthttp.RequestCtx) {
-
-}
-
-/*
-func proxyHandler(ctx *fasthttp.RequestCtx) {
+func (cx *compoxur) testHandle(ctx *fasthttp.RequestCtx) {
 	fmt.Fprintf(ctx, "Hello, world!\n\n")
 
 	fmt.Fprintf(ctx, "Request method is %q\n", ctx.Method())
@@ -76,7 +47,7 @@ func proxyHandler(ctx *fasthttp.RequestCtx) {
 	fmt.Fprintf(ctx, "Serial request number for the current connection is %d\n", ctx.ConnRequestNum())
 	fmt.Fprintf(ctx, "Your ip is %q\n\n", ctx.RemoteIP())
 
-	fmt.Fprintf(ctx, "Raw request is:\n---CUT---\n%s\n---CUT---", &ctx.Request)
+	fmt.Fprintf(ctx, "Raw request is:\n---CUT---\n%s\n---CUT---", ctx.Request)
 
 	ctx.SetContentType("text/plain; charset=utf8")
 
@@ -90,4 +61,3 @@ func proxyHandler(ctx *fasthttp.RequestCtx) {
 	ctx.Response.Header.SetCookie(&c)
 
 }
-*/

@@ -60,7 +60,7 @@ func newReadTillReader(reader io.Reader, delim []byte) *readTillReader {
 	}
 }
 
-func (rtr *ReadTillReader) Read(p []byte) (n int, err error) {
+func (rtr *readTillReader) Read(p []byte) (n int, err error) {
 	if rtr.found {
 		return 0, io.EOF
 	} else {
