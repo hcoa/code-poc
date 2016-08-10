@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hoisie/mustache"
 	"github.com/valyala/fasthttp"
 )
 
@@ -53,10 +54,13 @@ func (b *backend) process(cx *compoxur) []byte {
 
 	var statusCode, fCnt, i int
 	statusCode, res, err = b.fc.GetTimeout(res, uri, timeout)
-	fmt.Printf("response: %q\nstatusCode: %d", res, statusCode)
+	fmt.Printf("response: %q\nstatusCode: %d\n", res, statusCode)
 	if statusCode != fasthttp.StatusOK {
 		return []byte(fmt.Sprintf(errTpl, err))
 	}
+	cx.RLock()
+	res = []byte(mustache.Render(string(res), cx.varSet))
+	cx.RUnlock()
 
 	fInCh := make(chan *fragment, fragmentChanBufferSize)
 	fOutCh := make(chan *fragment, fragmentChanBufferSize)
@@ -64,7 +68,7 @@ func (b *backend) process(cx *compoxur) []byte {
 		go parse(fInCh, fOutCh, timeout)
 	}
 	res, fCnt = cx.parseHtml(res, b, fInCh)
-	fmt.Printf("tpl: %q\nfragment count: %d", res, fCnt)
+	fmt.Printf("tpl: %q\nfragment count: %d\n", res, fCnt)
 
 	key := make([]byte, 0, 20)
 	for i = 0; i < fCnt; i++ {

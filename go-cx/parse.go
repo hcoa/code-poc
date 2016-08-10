@@ -5,8 +5,8 @@ import "time"
 var (
 	tegAttrSet = [...]string{
 		"cx-url",
-		"cx-cacke-key",
-		"cx-cacke-ttl",
+		"cx-cache-key",
+		"cx-cache-ttl",
 		"cx-timeout",
 		"cx-no-cache",
 		"cx-replace-outer",

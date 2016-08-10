@@ -2,3 +2,4 @@ package: .
 import:
 - package: github.com/valyala/fasthttp
 - package: github.com/coocood/freecache
+- package: github.com/hoisie/mustache
