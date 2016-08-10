@@ -8,6 +8,7 @@
   },
   "author": "",
   "dependencies": {
+    "compoxure": "*",
     "connect": "*",
     "cookie-parser": "*",
     "morgan": "*",

@@ -1,6 +1,6 @@
 'use strict';
 
-var cx = require('../compoxure/');
+var cx = require('compoxure');
 var config = require('./config.json')
 var connect = require('connect');
 var cookieParser = require('cookie-parser');
