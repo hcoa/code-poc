@@ -1,8 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"time"
+
+	"github.com/valyala/fasthttp"
+)
+
+const (
+	fragmentChanBufferSize   = 30
+	workerFragmentProcessCnt = 5
 )
 
 type backend struct {
@@ -18,34 +26,63 @@ type backend struct {
 	dontPassUrl  bool
 	contentTypes []string
 	headers      []string
-	cackeKey     []byte
+	cacheKey     []byte
 	noCache      bool
+	fc           *fasthttp.HostClient
 }
 
 func (b *backend) process(cx *compoxur) []byte {
 	//check cache
-	ttl := time.ParseDuration(b.ttl)
 	res, err := cx.cache.Get(b.cacheKey)
 	if err == nil {
 		return res
 	}
-
-	timeout := time.ParseDuration(b.timeout)
-	c := &fasthttp.HostClient{
-		Addr:            b.target,
-		Name:            cx.getVar("user:agent", ""),
-		MaxConnDuration: timeout,
-	}
-
+	timeout, _ := time.ParseDuration(b.timeout)
+	/*
+		c := &fasthttp.HostClient{
+			Addr:            b.target,
+			Name:            cx.getVar("user:agent", ""),
+			MaxConnDuration: timeout,
+		}
+	*/
 	uri := cx.getVar("url:path", "")
 	if len(uri) == 0 {
-		//TODO: add error handling here
-		return []byte{}
+		return []byte(fmt.Sprintf(errTpl, "URL path is empty!"))
 	}
+	fmt.Println(b.host, timeout, uri)
 
-	var statusCode int
-	statusCode, res, err = c.GetTimeout(res, uri, timeout)
+	var statusCode, fCnt, i int
+	statusCode, res, err = b.fc.GetTimeout(res, uri, timeout)
+	fmt.Printf("response: %q\nstatusCode: %d", res, statusCode)
 	if statusCode != fasthttp.StatusOK {
 		return []byte(fmt.Sprintf(errTpl, err))
 	}
+
+	fInCh := make(chan *fragment, fragmentChanBufferSize)
+	fOutCh := make(chan *fragment, fragmentChanBufferSize)
+	for i = 0; i < workerFragmentProcessCnt; i++ {
+		go parse(fInCh, fOutCh, timeout)
+	}
+	res, fCnt = cx.parseHtml(res, b, fInCh)
+	fmt.Printf("tpl: %q\nfragment count: %d", res, fCnt)
+
+	key := make([]byte, 0, 20)
+	for i = 0; i < fCnt; i++ {
+		select {
+		case f := <-fOutCh:
+			key = []byte(fmt.Sprintf("{{fragment%d}}", f.id))
+			res = bytes.Replace(res, key, f.res, 1)
+		case <-time.After(timeout):
+			//TODO: return result and set error in all unfieled placeholders
+			return []byte(fmt.Sprintf(errTpl, "Timeout is reached"))
+		}
+	}
+
+	//here we have processed html from backend
+	//let's save it to cache
+	ttl, _ := time.ParseDuration(b.ttl)
+	ttls := int(ttl / time.Second)
+	cx.cache.Set(b.cacheKey, res, ttls)
+
+	return res
 }

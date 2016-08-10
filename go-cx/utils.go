@@ -9,6 +9,7 @@ import (
 type skipTillReader struct {
 	rdr   *bufio.Reader
 	delim []byte
+	cnt   int
 	found bool
 }
 
@@ -30,6 +31,7 @@ func (str *skipTillReader) Read(p []byte) (n int, err error) {
 			for i := range str.delim {
 				var c byte
 				c, err = str.rdr.ReadByte()
+				n++
 				if err != nil {
 					return 0, err
 				}
@@ -38,6 +40,7 @@ func (str *skipTillReader) Read(p []byte) (n int, err error) {
 					continue outer
 				}
 			}
+			str.cnt = n
 			str.found = true
 			// we read the delimiter so add it back
 			str.rdr = bufio.NewReader(io.MultiReader(bytes.NewReader(str.delim), str.rdr))
@@ -49,6 +52,7 @@ func (str *skipTillReader) Read(p []byte) (n int, err error) {
 type readTillReader struct {
 	rdr   *bufio.Reader
 	delim []byte
+	cnt   int
 	found bool
 }
 
@@ -80,6 +84,7 @@ func (rtr *readTillReader) Read(p []byte) (n int, err error) {
 					continue outer
 				}
 			}
+			rtr.cnt = n
 			rtr.found = true
 			break
 		}

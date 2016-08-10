@@ -43,9 +43,22 @@ var (
 )
 
 type fragment struct {
-	alias   string // use as TPL key
-	ttl     time.Duration
-	timeout time.Duration
-	src     []byte
-	res     []byte
+	id  int // use for build TPL key
+	src []byte
+	res []byte
+	b   *backend
+}
+
+//read till <div -> send to process fragment, add placeholder
+//anylize teg attributes, define cx-
+//parse parameters from attributes
+//make operation
+// <- return result, insert to placeholder
+func parse(in, out chan *fragment, timeout time.Duration) {
+	select {
+	case f := <-in:
+		f.res = f.src
+		out <- f
+	case <-time.After(timeout):
+	}
 }

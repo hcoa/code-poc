@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coocood/freecache"
 	"github.com/valyala/fasthttp"
 	"github.com/valyala/fasthttp/fasthttputil"
 )
@@ -21,6 +22,18 @@ const (
 	root = `<body>
   <div cx-url='{{server:local}}/application/component2'></div>
 </body>`
+	compoxured = `<body>
+  <div cx-url='{{server:local}}/application/component2'>
+    <div>
+      <p>Widget Two</p>
+      <div cx-url='{{server:local}}/application/component1'>
+        <div>
+          <p>Widget 1</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>`
 )
 
 var respBodySet = map[string]string{
@@ -29,7 +42,7 @@ var respBodySet = map[string]string{
 	"root":  root,
 }
 
-fucn NewTestServer(t *testing.T) (*fasthttp.server, *fasthttp.HostClient, chan struct{}){
+func NewTestServer(t *testing.T) (*fasthttp.Server, *fasthttp.HostClient, chan struct{}) {
 	ln := fasthttputil.NewInmemoryListener()
 
 	s := &fasthttp.Server{
@@ -65,27 +78,51 @@ fucn NewTestServer(t *testing.T) (*fasthttp.server, *fasthttp.HostClient, chan s
 	return s, c, serverStopCh
 }
 
-func NewTestCompoxur(t *testing.T) *compoxur {
+func NewTestCompoxur(t *testing.T, fc *fasthttp.HostClient) *compoxur {
 	cacheSize := 100 * 1024 * 1024
 	c := freecache.NewCache(cacheSize)
 
 	varSet := make(map[string]string)
 	varSet["server:local"] = "foobar"
 
-	ch := &compoxur{
+	return &compoxur{
 		cache:  c,
 		varSet: varSet,
+		backSet: []backend{
+			backend{
+				regexp:       "*",
+				target:       "http://foobar",
+				host:         "test",
+				ttl:          "10s",
+				timeout:      "1s",
+				quietFailure: true,
+				dontPassUrl:  false,
+				contentTypes: []string{
+					"html",
+				},
+				cacheKey: []byte(`test`),
+				fc:       fc,
+			},
+		},
 	}
-
 }
 
-func TestCalls(t *testing.T)  {
-	s, c, sCh := NewTestServer(t)
+func TestCalls(t *testing.T) {
+	_, c, _ := NewTestServer(t)
 
-	var alias, uri string
-	for _, alias = range [3]string{"comp1", "comp2", "root"} {
-		uri = fmt.Sprintf("http://foobar/%s", alias)
+	for _, alias := range [3]string{"comp1", "comp2", "root"} {
+		uri := fmt.Sprintf("http://foobar/%s", alias)
 		helperGetTimeout(c, uri, respBodySet[alias], t)
+	}
+}
+
+func TestCompoxing(t *testing.T) {
+	_, c, _ := NewTestServer(t)
+	cx := NewTestCompoxur(t, c)
+	cx.setVar("url:path", "http://foobar/root")
+	res := cx.processBack("root")
+	if string(res) != compoxured {
+		t.Errorf("got: %q\nexpect: %s\n", res, compoxured)
 	}
 }
 
@@ -102,4 +139,10 @@ func helperGetTimeout(c *fasthttp.HostClient, uri, bodyStr string, t *testing.T)
 			t.Fatalf("unexpected body %q. Expecting %q", body, bodyStr)
 		}
 	}
+}
+
+func (cx *compoxur) setVar(key, val string) {
+	cx.Lock()
+	defer cx.Unlock()
+	cx.varSet[key] = val
 }
