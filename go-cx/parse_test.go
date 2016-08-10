@@ -12,28 +12,10 @@ import (
 )
 
 const (
-	comp1 = `<div>
-  <p>Widget 1</p>
-</div>`
-	comp2 = `<div>
-  <p>Widget Two</p>
-  <div cx-url='{{server:local}}/application/component1'></div>
-</div>`
-	root = `<body>
-  <div cx-url='{{server:local}}/application/component2'></div>
-</body>`
-	compoxured = `<body>
-  <div cx-url='{{server:local}}/application/component2'>
-    <div>
-      <p>Widget Two</p>
-      <div cx-url='{{server:local}}/application/component1'>
-        <div>
-          <p>Widget 1</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</body>`
+	comp1      = `<div><p>Widget 1</p></div>`
+	comp2      = `<div><p>Widget Two</p><div cx-url='{{server:local}}/comp1'></div></div>`
+	root       = `<body><div cx-url='{{server:local}}/comp2'></div></body>`
+	compoxured = `<body><div cx-url='{{server:local}}/comp2'><div><p>Widget Two</p><div cx-url='{{server:local}}/comp1'><div><p>Widget 1</p></div></div></div></div></body>`
 )
 
 var respBodySet = map[string]string{
@@ -83,18 +65,18 @@ func NewTestCompoxur(t *testing.T, fc *fasthttp.HostClient) *compoxur {
 	c := freecache.NewCache(cacheSize)
 
 	varSet := make(map[string]string)
-	varSet["server:local"] = "foobar"
+	varSet["server:local"] = "http://foobar"
 
 	return &compoxur{
 		cache:  c,
 		varSet: varSet,
 		backSet: []backend{
 			backend{
-				regexp:       "*",
+				regexp:       []byte("*"),
 				target:       "http://foobar",
 				host:         "test",
-				ttl:          "10s",
-				timeout:      "1s",
+				ttl:          []byte("10s"),
+				timeout:      []byte("1s"),
 				quietFailure: true,
 				dontPassUrl:  false,
 				contentTypes: []string{
@@ -119,10 +101,11 @@ func TestCalls(t *testing.T) {
 func TestCompoxing(t *testing.T) {
 	_, c, _ := NewTestServer(t)
 	cx := NewTestCompoxur(t, c)
-	cx.setVar("url:path", "http://foobar/root")
-	res := cx.processBack("root")
+	tca := &tegCxAttr{}
+	tca.cxUrl = []byte(`http://foobar/root`)
+	res := cx.processBack(tca)
 	if string(res) != compoxured {
-		t.Errorf("got: %q\nexpect: %s\n", res, compoxured)
+		t.Errorf("got: %s\nexpect: %s\n", string(res), compoxured)
 	}
 }
 

@@ -1,6 +1,9 @@
 package main
 
-import "time"
+import (
+	"bytes"
+	"time"
+)
 
 var (
 	tegAttrSet = [...]string{
@@ -54,11 +57,17 @@ type fragment struct {
 //parse parameters from attributes
 //make operation
 // <- return result, insert to placeholder
-func parse(in, out chan *fragment, timeout time.Duration) {
+func parse(in, out chan *fragment, timeout time.Duration, cx *compoxur) {
+
 	select {
 	case f := <-in:
-		f.res = f.src
-		out <- f
+		go func() {
+			tca := cx.parseTeg(f.src)
+			endTegPos := bytes.IndexByte(f.src, '>') + 1
+			f.res = cx.processBack(tca)
+			f.res = append(f.src[:endTegPos], append(f.res, f.src[endTegPos:]...)...)
+			out <- f
+		}()
 	case <-time.After(timeout):
 	}
 }
