@@ -15,3 +15,4 @@ or run in detached mode:
 ```
 cd cx/; docker-compose build && docker-compose up -d
 ```
+Note: redis without persistent storage.
